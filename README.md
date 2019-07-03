@@ -1,4 +1,4 @@
-## Genetic_Algo
+## Genetic Algorithm using Python Programming
 
 ### Prerequisites
 

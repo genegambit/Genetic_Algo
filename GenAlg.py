@@ -4,7 +4,9 @@ from numpy import equal
 import blosum
 from blosum import BLOSUM50 as B50
 from copy import *
-import random         
+import random 
+import time
+start_time = time.time()
 
 
 def BlosumScore( mat, abet, s1, s2, gap=-8 ):
@@ -22,47 +24,48 @@ def BlosumScore( mat, abet, s1, s2, gap=-8 ):
     return sc
     
 def EstablishTargets():
-    tgsc1 = BlosumScore( blosum.BLOSUM50, blosum.PBET, seq1, seq1 )
-    tgsc2 = BlosumScore( blosum.BLOSUM50, blosum.PBET, seq2, seq2 )
-    cxsc2 = BlosumScore( blosum.BLOSUM50, blosum.PBET, seq1, seq2 )
-    bestsc = max( (tgsc1, tgsc2) ) + cxsc2
+    tgsc1 = BlosumScore (blosum.BLOSUM50, blosum.PBET, seq1, seq1)
+    tgsc2 = BlosumScore (blosum.BLOSUM50, blosum.PBET, seq2, seq2)
+    cxsc2 = BlosumScore (blosum.BLOSUM50, blosum.PBET, seq1, seq2)
+    bestsc = max ((tgsc1, tgsc2) ) + cxsc2
     return bestsc
     
 def Jumble( PBET, ngenes ):
     folks = []
-    ape = (deepcopy( PBET ))*5
-    for i in range( ngenes ):
-	ape1 = list(ape)
-        random.shuffle( ape1 )
-        folks.append( deepcopy( ape1 ))
+    ape = (deepcopy (PBET))*5
+    for i in range (ngenes):
+        ape1 = list (ape)
+        random.shuffle (ape1)
+        folks.append (deepcopy(ape1))
     return folks
 
-def SingleCost( folk, seq1, seq2 ):
-    number1 = BlosumScore( blosum.BLOSUM50, blosum.PBET, seq1, folk )
-    number2 = BlosumScore( blosum.BLOSUM50, blosum.PBET, seq2, folk )
+def SingleScore( folk, seq1, seq2 ):
+    number1 = BlosumScore (blosum.BLOSUM50, blosum.PBET, seq1, folk)
+    number2 = BlosumScore (blosum.BLOSUM50, blosum.PBET, seq2, folk)
     singlecost = Bestsc - (number1 + number2)
     return singlecost
     
-def CostFunction (seq):
-    Cost=[]
-    for count in range(len(seq)):
-	CostEach = SingleCost(seq[count],seq1,seq2)
-	Cost.append(float(CostEach))
-    return array(Cost)
+def ScoreFunction (seq):
+    Score = []
+    for count in range (len(seq)):
+        ScoreEach = SingleScore (seq[count],seq1,seq2)
+        Score.append (float (ScoreEach))
+    return array (Score)
 
-def CrossOver( folks, Cost ):
+def CrossOver (folks, Cost):
     # convert costs to probabilities
-    dim = len( folks[0] )
+    dim = len (folks[0])
     prob = Cost + 0.0
     mx = prob.max()
-    prob = mx - prob	# lowest cost is now highest numbr.
+    prob = mx - prob 
     mx = prob.max()
-    prob = prob / mx	# makes sure numbers aren't too high
-    prob = prob / prob.sum()	# normalized.  sum(prob) = 1.0
+    prob = prob / mx   
+    prob = prob / prob.sum() 
     # make new kids
     kids = []
-    NG = len( folks )
-    for i in range( NG/2 ):
+    NG = len(folks)
+    NG_half = int(NG/2)
+    for i in range (NG_half):
         rdad = random.random()
         rmom = random.random()
         # find which vectors to use
@@ -77,8 +80,7 @@ def CrossOver( folks, Cost ):
             sm = sm + prob[imom]
             imom = imom+1
         idad,imom = idad-1,imom-1
-        # make babies
-        x = int(random.random()*(dim-2))+1	# crossover
+        x = int(random.random()*(dim-2))+1  # crossover
         kids.append(concatenate((folks[idad][:x],folks[imom][x:])))
         kids.append(concatenate((folks[imom][:x],folks[idad][x:])))
     return kids
@@ -90,21 +92,16 @@ def Mutate(Kids):
     lim = random.randint(0,mutationlength+1)
     startposition = random.randint(0,l- lim+1)
     for i in range (len(SecondKids)):
-	#kiddd = deepcopy(FirstKids[1])
-	aa = SecondKids[i][(startposition) : (startposition + lim)]
-	random.shuffle(aa)
-	SecondKids[i][(startposition) : (startposition + lim)] = aa
-	return SecondKids
+        aa = SecondKids[i][(startposition) : (startposition + lim)]
+        random.shuffle(aa)
+        SecondKids[i][(startposition) : (startposition + lim)] = aa
+    return SecondKids
 
 
 def Feud( folks, kids, fcost, kcost ):
-
     for i in range( 0, len(kids) ):
-
         if kcost[i] < fcost[i]:
-
             folks[i] = kids[i]
-
             fcost[i] = kcost[i]
     return folks
      
@@ -116,23 +113,27 @@ folks = Jumble(blosum.PBET, 100)
 sc = BlosumScore(B50,blosum.PBET,seq1,seq2)
 Bestsc = EstablishTargets()
 B_Score = Bestsc
-for i in range (0, 10000):
-    CostFolks = CostFunction(folks)
-    #print len(CostFolks)
-    mc = CostFolks.min()
+iteration = 10000
+for i in range (0, iteration):
+    ScoreFolks = ScoreFunction(folks)
+    mc = ScoreFolks.min()
     if mc < B_Score:
-	mc_index = [x for x in range(len(CostFolks)) if CostFolks[x] == mc][0]
-	Best = folks[mc_index]
-	B_Score = mc
-    FirstKids = CrossOver( folks , CostFolks )
-    SecondKids = Mutate(FirstKids)
-    folks = Mutate(FirstKids)
-    print i
-    CostSecondKids = CostFunction(SecondKids)
-    folks = Feud (folks, SecondKids, CostFolks, CostSecondKids)
+        mc_index = [x for x in range(len(ScoreFolks)) if ScoreFolks[x] == mc][0]
+        Best = folks[mc_index]
+        B_Score = mc
+    FirstKids = CrossOver (folks , ScoreFolks)
+    SecondKids = Mutate (FirstKids)
+    folks = Mutate (FirstKids)
+    print (i)
+    ScoreSecondKids = ScoreFunction (SecondKids)
+    folks = Feud (folks, SecondKids, ScoreFolks, ScoreSecondKids)
     
 
-FCost = CostFunction (folks)
-#print FCost
-print "BEST SCORE: ", `B_Score`
-print "BEST SEQUENCE: ", `Best`
+FCost = ScoreFunction (folks)
+print ("Sequence A: ", seq1)
+print ("Sequence B: ", seq2)
+print ("Best Score: ", B_Score)
+print ("Best Match: ", ''.join(Best))
+print ("Iterations: ", iteration)
+end_time = round((time.time() - start_time)/60, 2)
+print("Run Time: ", str(end_time) + " Minutes.")
